@@ -5,14 +5,16 @@ import (
 	"bufio"
 	"fmt"
 	"go-redis/redis"
+	"go-redis/router"
 	"os"
 	"strings"
 )
 
 func main() {
 	redis := redis.NewRedis()
+	router := router.NewRouter("3000", redis)
 
-	fmt.Println("Listening...")
+	router.Run()
 
 	for {
 		reader := bufio.NewReader(os.Stdin)
@@ -24,17 +26,21 @@ func main() {
 		input = strings.TrimSpace(input)
 		commands := strings.Fields(input)
 
+		command := commands[0]
+		key := commands[1]
+		value := strings.Join(commands[2:], " ")
+
 		if input == "q" {
 			fmt.Println("Exiting the program.")
 			break
 		}
 
-		switch commands[0] {
+		switch command {
 		case "GET":
-			value := redis.Get(commands[1])
+			value := redis.Get(key)
 			fmt.Println(value)
 		case "PUT":
-			redis.Put(commands[1], commands[2])
+			redis.Put(key, value)
 		default:
 			fmt.Println("Wrong command! Try 'GET key' or 'PUT key value'.")
 		}
