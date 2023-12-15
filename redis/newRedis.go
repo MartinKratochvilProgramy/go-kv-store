@@ -9,7 +9,7 @@ import (
 type StoreWrite struct {
 	id        uuid.UUID
 	createdAt time.Time
-	data      interface{}
+	value     interface{}
 }
 
 type Redis struct {

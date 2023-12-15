@@ -1,19 +1,12 @@
 package redis
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/gofrs/uuid"
 )
 
-func (redis *Redis) Put(key string, value string) error {
-	var data interface{}
-	err := json.Unmarshal([]byte(value), &data)
-
-	if err != nil {
-		data = value
-	}
+func (redis *Redis) Put(key string, value interface{}) error {
 
 	newId, err := uuid.NewV4()
 	if err != nil {
@@ -23,7 +16,7 @@ func (redis *Redis) Put(key string, value string) error {
 	newStoreWrite := &StoreWrite{
 		id:        newId,
 		createdAt: time.Now(),
-		data:      data,
+		value:     value,
 	}
 
 	(*redis.store)[key] = *newStoreWrite
