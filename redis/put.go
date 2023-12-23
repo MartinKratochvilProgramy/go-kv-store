@@ -1,21 +1,35 @@
 package redis
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gofrs/uuid"
 )
 
-func (redis *Redis) Put(key string, value interface{}) error {
+func (redis *Redis) Put(
+	key string,
+	value interface{},
+	id uuid.UUID,
+	timestamp time.Time,
+) error {
+	valueBytes, err := json.Marshal(value)
+	valueString := fmt.Sprintf(
+		"PUT, %s, %s, {\"%s\": %s}\n",
+		timestamp.Format(time.RFC3339),
+		id,
+		key,
+		string(valueBytes))
 
-	newId, err := uuid.NewV4()
+	_, err = redis.logFile.WriteString(valueString)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to write logs: %w", err)
 	}
 
 	newStoreWrite := &StoreWrite{
-		id:        newId,
-		createdAt: time.Now(),
+		id:        id,
+		createdAt: timestamp,
 		value:     value,
 	}
 

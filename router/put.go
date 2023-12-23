@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gofrs/uuid"
 )
 
 func (r *Router) put(c *gin.Context) {
@@ -19,7 +21,12 @@ func (r *Router) put(c *gin.Context) {
 	}
 
 	for key, value := range data {
-		err = r.redis.Put(key, value)
+		id, err := uuid.NewV4()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		err = r.redis.Put(key, value, id, time.Now())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
