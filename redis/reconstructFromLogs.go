@@ -12,11 +12,11 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func (redis *Redis) ReconstructFromLogs() error {
+func (redis *Redis) reconstructFromLogs() error {
 	readFile, err := os.Open("./logs/logs.txt")
 
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)

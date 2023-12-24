@@ -14,6 +14,10 @@ func (redis *Redis) Put(
 	id uuid.UUID,
 	timestamp time.Time,
 ) error {
+	if time.Since(timestamp) > redis.expiration {
+		return nil
+	}
+
 	valueBytes, err := json.Marshal(value)
 	valueString := fmt.Sprintf(
 		"PUT, %s, %s, {\"%s\": %s}\n",
@@ -28,12 +32,28 @@ func (redis *Redis) Put(
 	}
 
 	newStoreWrite := &StoreWrite{
-		id:        id,
-		createdAt: timestamp,
-		value:     value,
+		key:            key,
+		id:             id,
+		createdAt:      timestamp,
+		value:          value,
+		prevStoreWrite: redis.Head,
+		nextStoreWrite: nil,
+	}
+	// if new store, set tail
+	if redis.Tail == nil {
+		redis.Tail = newStoreWrite
+	}
+	// if new store, set tail
+	if redis.Head == nil {
+		redis.Head = newStoreWrite
 	}
 
+	// set prevStoreWrite next to newStoreWrite
+	redis.Head.nextStoreWrite = newStoreWrite
+
 	(*redis.store)[key] = *newStoreWrite
+	// set new head
+	redis.Head = newStoreWrite
 
 	return nil
 }

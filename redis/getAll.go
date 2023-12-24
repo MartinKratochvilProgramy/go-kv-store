@@ -1,13 +1,20 @@
 package redis
 
-import (
-	"fmt"
-)
+import "fmt"
 
 func (redis *Redis) GetAll() []interface{} {
-	for key, value := range *redis.store {
-		fmt.Printf("Key: %s, Value: %+v\n", key, value.createdAt)
-	}
+	fmt.Println("Get all")
+	var currentStoreWrite = redis.Tail
+	// if currentStoreWrite == nil {
+	// 	return nil
+	// }
 
-	return nil
+	for {
+		if currentStoreWrite == nil {
+			return nil
+		}
+
+		fmt.Println("value: ", currentStoreWrite.value, " key: ", currentStoreWrite.key)
+		currentStoreWrite = currentStoreWrite.nextStoreWrite
+	}
 }

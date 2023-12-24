@@ -8,7 +8,7 @@ import (
 
 func main() {
 	redis := redis.NewRedis()
-	_ = redis.ReconstructFromLogs()
+	// redis.GetAll()
 
 	router := router.NewRouter("3000", redis)
 
