@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -13,12 +12,7 @@ import (
 )
 
 func (redis *Redis) reconstructFromLogs() error {
-	readFile, err := os.Open("./logs/logs.txt")
-
-	if err != nil {
-		return err
-	}
-	fileScanner := bufio.NewScanner(readFile)
+	fileScanner := bufio.NewScanner(redis.logFile)
 	fileScanner.Split(bufio.ScanLines)
 	var fileLines []string
 
@@ -50,8 +44,6 @@ func (redis *Redis) reconstructFromLogs() error {
 
 		fileLines = append(fileLines, fileScanner.Text())
 	}
-
-	readFile.Close()
 
 	return nil
 }

@@ -18,17 +18,19 @@ func (redis *Redis) Put(
 		return nil
 	}
 
-	valueBytes, err := json.Marshal(value)
-	valueString := fmt.Sprintf(
-		"PUT, %s, %s, {\"%s\": %s}\n",
-		timestamp.Format(time.RFC3339),
-		id,
-		key,
-		string(valueBytes))
+	if redis.useLogs {
+		valueBytes, err := json.Marshal(value)
+		valueString := fmt.Sprintf(
+			"PUT, %s, %s, {\"%s\": %s}\n",
+			timestamp.Format(time.RFC3339),
+			id,
+			key,
+			string(valueBytes))
 
-	_, err = redis.logFile.WriteString(valueString)
-	if err != nil {
-		return fmt.Errorf("Failed to write logs: %w", err)
+		_, err = redis.logFile.WriteString(valueString)
+		if err != nil {
+			return fmt.Errorf("Failed to write logs: %w", err)
+		}
 	}
 
 	newStoreWrite := &StoreWrite{

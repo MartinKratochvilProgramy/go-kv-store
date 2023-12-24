@@ -15,9 +15,10 @@ type Router struct {
 	serverAddr *string
 }
 
-func NewRouter(port string, redis *redis.Redis) *Router {
-	serverAddr := fmt.Sprint("127.0.0.1:", port)
+func NewRouter(port *int, redis *redis.Redis) *Router {
+	serverAddr := "127.0.0.1:" + fmt.Sprint(*port)
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{

@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -22,32 +23,44 @@ type Redis struct {
 	mu         sync.Mutex
 	expiration time.Duration
 	store      *map[string]StoreWrite
+	useLogs    bool
 	logFile    *os.File
 	Tail       *StoreWrite
 	Head       *StoreWrite
 }
 
-func NewRedis() *Redis {
+func NewRedis(
+	useLogs *bool,
+	reconstructFromLogs *bool,
+	logsFilename *string,
+	expiration *time.Duration,
+) *Redis {
 	newStore := make(map[string]StoreWrite)
 
-	newLogFile, err := os.OpenFile("./logs/logs.txt", os.O_RDWR, 0666)
+	newLogFile, err := os.OpenFile("./logs/"+*logsFilename, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	newRedis := &Redis{
-		expiration: 25 * time.Second,
+		expiration: *expiration,
 		store:      &newStore,
+		useLogs:    *useLogs,
 		logFile:    newLogFile,
 	}
 
-	newRedis.reconstructFromLogs()
+	if *reconstructFromLogs {
+		fmt.Println("Reconstructing from logs...")
+		err := newRedis.reconstructFromLogs()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	ticker := time.Tick(1 * time.Second)
 	go func() {
 		for {
 			<-ticker
-			// newRedis.GetAll()
 			newRedis.cleanupExpiredEntries()
 		}
 	}()
