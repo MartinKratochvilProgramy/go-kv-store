@@ -1,4 +1,4 @@
-package redis
+package storage
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type StoreWrite struct {
 	nextStoreWrite *StoreWrite
 }
 
-type Redis struct {
+type Storage struct {
 	mu         sync.Mutex
 	expiration time.Duration
 	store      *map[string]StoreWrite
@@ -29,12 +29,12 @@ type Redis struct {
 	Head       *StoreWrite
 }
 
-func NewRedis(
+func NewStorage(
 	useLogs *bool,
 	reconstructFromLogs *bool,
 	logsFilename *string,
 	expiration *time.Duration,
-) *Redis {
+) *Storage {
 	newStore := make(map[string]StoreWrite)
 
 	newLogFile, err := os.OpenFile("./logs/"+*logsFilename, os.O_RDWR|os.O_CREATE, 0666)
@@ -42,7 +42,7 @@ func NewRedis(
 		log.Fatal(err)
 	}
 
-	newRedis := &Redis{
+	newStorage := &Storage{
 		expiration: *expiration,
 		store:      &newStore,
 		useLogs:    *useLogs,
@@ -51,7 +51,7 @@ func NewRedis(
 
 	if *reconstructFromLogs {
 		fmt.Println("Reconstructing from logs...")
-		err := newRedis.reconstructFromLogs()
+		err := newStorage.reconstructFromLogs()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -61,9 +61,9 @@ func NewRedis(
 	go func() {
 		for {
 			<-ticker
-			newRedis.cleanupExpiredEntries()
+			newStorage.cleanupExpiredEntries()
 		}
 	}()
 
-	return newRedis
+	return newStorage
 }

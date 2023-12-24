@@ -1,10 +1,10 @@
-package redis
+package storage
 
 import "fmt"
 
-func (redis *Redis) GetAll() []interface{} {
+func (storage *Storage) GetAll() []interface{} {
 	fmt.Println("Get all")
-	var currentStoreWrite = redis.Tail
+	var currentStoreWrite = storage.Tail
 	// if currentStoreWrite == nil {
 	// 	return nil
 	// }

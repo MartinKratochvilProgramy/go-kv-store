@@ -1,4 +1,4 @@
-package redis
+package storage
 
 import (
 	"bufio"
@@ -11,8 +11,8 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func (redis *Redis) reconstructFromLogs() error {
-	fileScanner := bufio.NewScanner(redis.logFile)
+func (storage *Storage) reconstructFromLogs() error {
+	fileScanner := bufio.NewScanner(storage.logFile)
 	fileScanner.Split(bufio.ScanLines)
 	var fileLines []string
 
@@ -39,7 +39,7 @@ func (redis *Redis) reconstructFromLogs() error {
 			}
 
 			timestamp, err := time.Parse(time.RFC3339, strTimestamp)
-			redis.Put(key, value, parsedUUID, timestamp)
+			storage.Put(key, value, parsedUUID, timestamp)
 		}
 
 		fileLines = append(fileLines, fileScanner.Text())

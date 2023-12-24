@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	"go-redis/redis"
+	"go-redis/storage"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -10,12 +10,12 @@ import (
 )
 
 type Router struct {
-	redis      *redis.Redis
+	storage    *storage.Storage
 	router     *gin.Engine
 	serverAddr *string
 }
 
-func NewRouter(port *int, redis *redis.Redis) *Router {
+func NewRouter(port *int, storage *storage.Storage) *Router {
 	serverAddr := "127.0.0.1:" + fmt.Sprint(*port)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -31,7 +31,7 @@ func NewRouter(port *int, redis *redis.Redis) *Router {
 	}))
 
 	return &Router{
-		redis:      redis,
+		storage:    storage,
 		router:     router,
 		serverAddr: &serverAddr,
 	}

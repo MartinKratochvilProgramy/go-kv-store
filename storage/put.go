@@ -1,4 +1,4 @@
-package redis
+package storage
 
 import (
 	"encoding/json"
@@ -8,17 +8,17 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func (redis *Redis) Put(
+func (storage *Storage) Put(
 	key string,
 	value interface{},
 	id uuid.UUID,
 	timestamp time.Time,
 ) error {
-	if time.Since(timestamp) > redis.expiration {
+	if time.Since(timestamp) > storage.expiration {
 		return nil
 	}
 
-	if redis.useLogs {
+	if storage.useLogs {
 		valueBytes, err := json.Marshal(value)
 		valueString := fmt.Sprintf(
 			"PUT, %s, %s, {\"%s\": %s}\n",
@@ -27,7 +27,7 @@ func (redis *Redis) Put(
 			key,
 			string(valueBytes))
 
-		_, err = redis.logFile.WriteString(valueString)
+		_, err = storage.logFile.WriteString(valueString)
 		if err != nil {
 			return fmt.Errorf("Failed to write logs: %w", err)
 		}
@@ -38,24 +38,24 @@ func (redis *Redis) Put(
 		id:             id,
 		createdAt:      timestamp,
 		value:          value,
-		prevStoreWrite: redis.Head,
+		prevStoreWrite: storage.Head,
 		nextStoreWrite: nil,
 	}
 	// if new store, set tail
-	if redis.Tail == nil {
-		redis.Tail = newStoreWrite
+	if storage.Tail == nil {
+		storage.Tail = newStoreWrite
 	}
 	// if new store, set tail
-	if redis.Head == nil {
-		redis.Head = newStoreWrite
+	if storage.Head == nil {
+		storage.Head = newStoreWrite
 	}
 
 	// set prevStoreWrite next to newStoreWrite
-	redis.Head.nextStoreWrite = newStoreWrite
+	storage.Head.nextStoreWrite = newStoreWrite
 
-	(*redis.store)[key] = *newStoreWrite
+	(*storage.store)[key] = *newStoreWrite
 	// set new head
-	redis.Head = newStoreWrite
+	storage.Head = newStoreWrite
 
 	return nil
 }

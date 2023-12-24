@@ -3,9 +3,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"go-redis/redis"
 	"go-redis/router"
+	"go-redis/storage"
 	"time"
 )
 
@@ -17,10 +16,7 @@ func main() {
 	port := flag.Int("port", 3000, "Port at which to run the server.")
 	flag.Parse()
 
-	fmt.Println(*reconstructFromLogs)
-	fmt.Println(*expiration)
-
-	redis := redis.NewRedis(useLogs, reconstructFromLogs, logsFilename, expiration)
+	redis := storage.NewStorage(useLogs, reconstructFromLogs, logsFilename, expiration)
 
 	router := router.NewRouter(port, redis)
 

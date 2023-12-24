@@ -7,7 +7,7 @@ import (
 )
 
 func (r *Router) getAll(c *gin.Context) {
-	r.redis.GetAll()
+	r.storage.GetAll()
 
 	c.JSON(http.StatusOK, gin.H{"message": "OK"})
 	return

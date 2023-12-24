@@ -16,7 +16,7 @@ func (r *Router) get(c *gin.Context) {
 		return
 	}
 
-	value := r.redis.Get(body.Key)
+	value := r.storage.Get(body.Key)
 	if value == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Key not found."})
 		return
