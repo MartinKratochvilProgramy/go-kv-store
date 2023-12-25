@@ -5,10 +5,12 @@ import requests
 
 # data={}
 ts = time.time()
-for i in range(1_000):
-    res = requests.put("http://127.0.0.1:3000/put", data=json.dumps({str(i): str(i)}))
+for i in range(5_682):
+    print(i)
+    res = requests.put("http://127.0.0.1:3000/", data=json.dumps({str(i): str(i)}))
 te = time.time()
 print(f"Writing took {te-ts}s")
+exit()
 
 payload_data = {
     "key": "foo"

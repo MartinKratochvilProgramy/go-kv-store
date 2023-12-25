@@ -41,17 +41,18 @@ func (storage *Storage) Put(
 		prevStoreWrite: storage.Head,
 		nextStoreWrite: nil,
 	}
-	// if new store, set tail
+	// if empty store, set tail
 	if storage.Tail == nil {
 		storage.Tail = newStoreWrite
 	}
-	// if new store, set tail
-	if storage.Head == nil {
-		storage.Head = newStoreWrite
-	}
 
-	// set prevStoreWrite next to newStoreWrite
-	storage.Head.nextStoreWrite = newStoreWrite
+	if storage.Head == nil {
+		// if empty store, set head
+		storage.Head = newStoreWrite
+	} else {
+		// set new head only if it exists
+		storage.Head.nextStoreWrite = newStoreWrite
+	}
 
 	(*storage.store)[key] = *newStoreWrite
 	// set new head

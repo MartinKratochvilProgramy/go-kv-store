@@ -17,10 +17,17 @@ func (storage *Storage) cleanupExpiredEntries() {
 			return
 		}
 		if time.Since(currentStoreWrite.createdAt) > storage.expiration {
+			// if write is expired, delete it
 			storage.Tail = currentStoreWrite.nextStoreWrite
 			currentStoreWrite.prevStoreWrite = nil
+
 			delete(*storage.store, currentStoreWrite.key)
+
+			currentStoreWrite = currentStoreWrite.nextStoreWrite
+		} else {
+			// if write is not expired, break the loop
+			storage.mu.Unlock()
+			return
 		}
-		currentStoreWrite = currentStoreWrite.nextStoreWrite
 	}
 }
