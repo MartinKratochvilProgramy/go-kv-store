@@ -26,7 +26,9 @@ func (r *Router) put(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		err = r.storage.Put(key, value, id, time.Now())
+		go func() {
+			err = r.storage.Put(key, value, id, time.Now())
+		}()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

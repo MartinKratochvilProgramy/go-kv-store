@@ -17,7 +17,7 @@ Let's first create a project by running:
 go mod init go-redis
 ```
 
-Then we can start working on the storage. Create folder ./storage, inside we will make a Storage struct with store map - the reason for using map is allows us quickly access unstructured data by given key. Map keys will be strings and values will store in an empty interface StoreWrite - each write will have a unique identifier, a timestamp so we can delete the expired values and the actual data. The stored data will be defined as an empty interface so that we are not limited by data types.
+Then we can start working on the storage. Create folder ./storage, inside we will make a Storage struct with store map - the reason for using map is allows us quickly access unstructured data by given key. Map keys will be strings and values will store in an empty interface StoreWrite - each write will have a unique identifier, a timestamp so we can delete the expired values and the actual data. We also have to include mutex in the storage struct - since our server can handle concurrent requests, we will have to lock the store before every read and write so as to not get any duplicate write. The stored data will be defined as an empty interface so that we are not limited by data types.
 
 ``` go
 // storage/newStorage.go
@@ -26,7 +26,7 @@ package storage
 
 import (
 	"time"
-
+	"sync"
 	"github.com/gofrs/uuid"
 )
 
@@ -37,6 +37,7 @@ type StoreWrite struct {
 }
 
 type Storage struct {
+	mu         sync.Mutex
 	store      *map[string]StoreWrite
 }
 
@@ -52,14 +53,16 @@ func NewStorage() *Storage {
 
 ```
 
-Using a map as opposed to other data structures has one big advantage - it allows us to access unstructured data fairly quicky if we know the key that needs to be looked up, no need for loops. We then create a simple get method that return value by given key:
+Using a map as opposed to other data structures has one big advantage - it allows us to access unstructured data fairly quicky if we know the key that needs to be looked up, no need for loops. We then create a simple get method that return value by given key, but everytime we get an item, we need to lock the mutex:
 ``` go
 // storage/get.go
 
 package storage
 
 func (storage *Storage) Get(key string) interface{} {
+	storage.mu.Lock()
 	storeWrite, ok := (*storage.store)[key]
+	storage.mu.Unlock()
 
 	if !ok {
 		return nil
@@ -69,7 +72,7 @@ func (storage *Storage) Get(key string) interface{} {
 }
 ```
 
-Just get will not be enough, so create a put method that allows us insert value into our map:
+Just get will not be enough, so create a put method that allows us insert value into our map - again we have to lock the mutex before inserting:
 ```go
 // storage/put.go
 
@@ -94,7 +97,9 @@ func (storage *Storage) Put(
 		value:     value,
 	}
 
+	storage.mu.Lock()
 	(*storage.store)[key] = *newStoreWrite
+	storage.mu.Unlock()
 
 	return nil
 }
@@ -134,7 +139,7 @@ func NewRouter(port *int, storage *storage.Storage) *Router {
 }
 ```
 
-Now we can create handlers for get and put methods. Since we passed the storage as dependency, it can be easily accessed from the router - as opposed to awkwardly passing it around.
+Now we can create handlers for get and put methods. Since we passed the storage as dependency, it can be easily accessed from the router - as opposed to awkwardly passing it around. We put the sotrage.Get method inside a goroutine, so that the server can handle concurrent read and writes without any conflicts:
 
 ``` go
 // router/get.go
@@ -157,14 +162,17 @@ func (r *Router) get(c *gin.Context) {
 		return
 	}
 
-	value := r.storage.Get(body.Key)
-	if value == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Key not found."})
-		return
-	}
+	go func() {
+		value := r.storage.Get(body.Key)
 
-	c.JSON(http.StatusOK, gin.H{body.Key: value})
-	return
+		if value == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Key not found."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{body.Key: value})
+		return
+	}()
 }
 ```
 
@@ -199,15 +207,17 @@ func (r *Router) put(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		err = r.storage.Put(key, value, id, time.Now())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
+		go func() {
+			err = r.storage.Put(key, value, id, time.Now())
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}()
 	}
-
 	c.JSON(http.StatusCreated, "OK")
 	return
+
 }
 ```
 
@@ -457,3 +467,76 @@ func NewStorage(expiration *time.Duration,) *Storage {
     ...
 }
 ```
+
+Lastly we will pass the expiration parameter as an environment variable in main function:
+
+```go
+// main.go
+
+func main() {
+	...
+	expiration := flag.Duration("expiration", 3*time.Minute, "How long to store key-value pairs for.")
+
+	redis := storage.NewStorage(, expiration)
+	...
+}
+
+```
+
+## Stress test
+
+Let's test how much load can our storage handle. Run the sotrage and this time set the expiraton variable to 1s - this way we are guaranteed that some entries will expire during the test so that there has to be some work done by the cleanup routine: 
+
+```shell
+go run . --port=3000 --expiration=1s
+```
+
+I have also written a python script to simulate the server load - using ProcessPoolExecutor we spawn 8 concurrent processes which send 4000 put and get requests, essentially inserting and reading every key, and we time the total execution time for all these 8000 requests. The script is provided below:
+
+```python
+import time
+import requests
+import json
+from concurrent.futures import ProcessPoolExecutor
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
+session = requests.Session()
+retry = Retry(connect=3, backoff_factor=0.5)
+adapter = HTTPAdapter(max_retries=retry)
+session.mount('http://', adapter)
+
+def send_put_request(start, end):
+    url = "http://127.0.0.1:3000/"
+    for i in range(start, end):
+        data = {str(i): str(i)}
+        _ = session.put(url, data=json.dumps(data))
+
+def send_get_request(start, end):
+    url = "http://127.0.0.1:3000/"
+    for i in range(start, end):
+        data = {"key": str(i)}
+        _ = session.get(url, data=json.dumps(data))
+
+def main():
+    N = 4_000
+    processes = 8
+    step = N // processes
+
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        ranges = [(i * step, (i + 1) * step) for i in range(processes)]
+
+        put_futures = [executor.submit(send_put_request, start, end) for start, end in ranges]
+        get_futures = [executor.submit(send_get_request, start, end) for start, end in ranges]
+
+        ts = time.time()    
+        for future in put_futures + get_futures:
+            future.result()
+        te = time.time()
+        print(f"Exec time: {te-ts}s")
+
+if __name__ == "__main__":
+    main()
+```
+
+Here's the result: on my machine (personal laptop with Intel i7, the process consumed around 700MB of RAM) total execution time was 3.964s, which means 0.496ms per request. We are well under the 1ms limit, considering the amount of work it took, that's pretty good!

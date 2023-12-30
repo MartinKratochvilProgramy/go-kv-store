@@ -18,6 +18,8 @@ func (storage *Storage) Put(
 		return nil
 	}
 
+	storage.mu.Lock()
+
 	if storage.useLogs {
 		valueBytes, err := json.Marshal(value)
 		valueString := fmt.Sprintf(
@@ -25,7 +27,8 @@ func (storage *Storage) Put(
 			timestamp.Format(time.RFC3339),
 			id,
 			key,
-			string(valueBytes))
+			string(valueBytes),
+		)
 
 		_, err = storage.logFile.WriteString(valueString)
 		if err != nil {
@@ -57,6 +60,8 @@ func (storage *Storage) Put(
 	(*storage.store)[key] = *newStoreWrite
 	// set new head
 	storage.Head = newStoreWrite
+
+	storage.mu.Unlock()
 
 	return nil
 }

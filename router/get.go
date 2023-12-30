@@ -16,12 +16,15 @@ func (r *Router) get(c *gin.Context) {
 		return
 	}
 
-	value := r.storage.Get(body.Key)
-	if value == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Key not found."})
-		return
-	}
+	go func() {
+		value := r.storage.Get(body.Key)
 
-	c.JSON(http.StatusOK, gin.H{body.Key: value})
-	return
+		if value == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Key not found."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{body.Key: value})
+		return
+	}()
 }
