@@ -26,13 +26,13 @@ func (r *Router) put(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		go func() {
+		go func(key string, value interface{}) {
 			err = r.storage.Put(key, value, id, time.Now())
-		}()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}(key, value)
 	}
 
 	c.JSON(http.StatusCreated, "OK")

@@ -18,6 +18,13 @@ func (storage *Storage) Put(
 		return nil
 	}
 
+	_, ok := (*storage.store)[key]
+	if ok {
+		// if key exists, remove it and append to the end
+		// this is to update it's timestamp
+		storage.Delete(key)
+	}
+
 	storage.mu.Lock()
 
 	if storage.useLogs {

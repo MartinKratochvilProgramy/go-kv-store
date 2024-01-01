@@ -14,7 +14,7 @@ func (storage *Storage) GetAll() []interface{} {
 			return nil
 		}
 
-		fmt.Println("value: ", currentStoreWrite.value, " key: ", currentStoreWrite.key)
+		fmt.Println("value: ", currentStoreWrite.value, " key: ", currentStoreWrite.key, " timestamp: ", currentStoreWrite.createdAt)
 		currentStoreWrite = currentStoreWrite.nextStoreWrite
 	}
 }

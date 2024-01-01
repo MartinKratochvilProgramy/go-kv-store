@@ -12,6 +12,7 @@ func (r *Router) Run() {
 	r.router.GET("/", r.get)
 	// r.router.GET("/get-all", r.getAll)
 	r.router.PUT("/", r.put)
+	r.router.DELETE("/", r.delete)
 
 	fmt.Println("Server running on", *r.serverAddr)
 	r.router.Run(*r.serverAddr)

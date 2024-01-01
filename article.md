@@ -207,14 +207,15 @@ func (r *Router) put(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		go func() {
+		go func(key string, value interface{}) {
 			err = r.storage.Put(key, value, id, time.Now())
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
-		}()
+		}(key, value)
 	}
+
 	c.JSON(http.StatusCreated, "OK")
 	return
 
@@ -483,6 +484,75 @@ func main() {
 
 ```
 
+## Deleting
+
+Although we have already designed a way to automatically delete writes, let's also implement a way for the user to delete - what kind of database would it be if there was no option to delete? In the storage struct create a delete method - again we have to lock the mutex to avoid conflicts. We also have to restructure the linked list on deletion. First check if the deleted key is either head or tail and if it is, move the nextStoreWrite or prevStoreWrite, then connect the previous and next writes by moving the relevant pointers.
+
+```go
+package storage
+
+import (
+	"errors"
+)
+
+func (storage *Storage) Delete(key string) error {
+
+	storage.mu.Lock()
+
+	storeWrite, ok := (*storage.store)[key]
+	if !ok {
+		storage.mu.Unlock()
+		return errors.New("Key not found")
+	}
+
+	if storage.Tail.key == key && storage.Tail.nextStoreWrite != &storeWrite {
+		storage.Tail = storeWrite.nextStoreWrite
+	}
+
+	if storage.Head.key == key && storage.Head.nextStoreWrite != &storeWrite {
+		storage.Head = storeWrite.prevStoreWrite
+	}
+
+	if storeWrite.prevStoreWrite != nil && storeWrite.nextStoreWrite != nil {
+		storeWrite.prevStoreWrite.nextStoreWrite = storeWrite.nextStoreWrite
+	}
+
+	delete(*storage.store, key)
+
+	storage.mu.Unlock()
+	return nil
+}
+```
+
+Another problem we run into is when editing existing write, we do not edit the timestamp, the app does it for us. Consequently, the edited write, that is changed by the Put method stays at the same place in the linked list, but we would like to move it to the end, so it would not expire immediatedly. We should first check if a write exsits and if it does, we can use the newly defined Delete method to remove it from the list, and then append new one to the end. Alter the Put method like this:
+
+```go
+// storage/put.go
+
+func (storage *Storage) Put(
+	key string,
+	value interface{},
+	id uuid.UUID,
+	timestamp time.Time,
+) error {
+	if time.Since(timestamp) > storage.expiration {
+		return nil
+	}
+
+	_, ok := (*storage.store)[key]
+	if ok {
+		// if key exists, remove it and append to the end
+		// this is to update it's timestamp
+		storage.Delete(key)
+	}
+
+	storage.mu.Lock()
+
+	...
+
+}
+```
+
 ## Stress test
 
 Let's test how much load can our storage handle. Run the sotrage and this time set the expiraton variable to 1s - this way we are guaranteed that some entries will expire during the test so that there has to be some work done by the cleanup routine: 
@@ -491,7 +561,7 @@ Let's test how much load can our storage handle. Run the sotrage and this time s
 go run . --port=3000 --expiration=1s
 ```
 
-I have also written a python script to simulate the server load - using ProcessPoolExecutor we spawn 8 concurrent processes which send 4000 put and get requests, essentially inserting and reading every key, and we time the total execution time for all these 8000 requests. The script is provided below:
+I have also written a python script to simulate the server load - using ProcessPoolExecutor we spawn 8 concurrent processes which send 4000 put and get requests, essentially inserting and reading every key - we then time the total execution time for all these 8000 requests. The script is provided below:
 
 ```python
 import time
