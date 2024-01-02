@@ -3,13 +3,13 @@ package main
 
 import (
 	"flag"
-	"go-redis/router"
-	"go-redis/storage"
+	"go-kv-store/router"
+	"go-kv-store/storage"
 	"time"
 )
 
 func main() {
-	useLogs := flag.Bool("use_logs", true, "If true, logs will be written to logsFilename.")
+	useLogs := flag.Bool("use_logs", true, "If true, logs will be written to logs_filename.")
 	reconstructFromLogs := flag.Bool("reconstruct_from_logs", false, "Reconstruct database from existing log file.")
 	logsFilename := flag.String("logs_filename", "logs.txt", "Log file name.")
 	expiration := flag.Duration("expiration", 3*time.Minute, "How long to store key-value pairs for.")

@@ -1,4 +1,4 @@
-module go-redis
+module go-kv-store
 
 go 1.20
 

@@ -13,7 +13,7 @@ In this article I will describe my approach for creating such system. To impleme
 Let's first create a project by running:
 
 ```
-go mod init go-redis
+go mod init go-kv-store
 ```
 
 Then we can start working on the storage. Create folder ./storage, inside we will make a Storage struct with store map - the reason for using map is that it allows us quickly access unstructured data by given key. Map keys will be strings and values will store in an empty interface StoreWrite - each write will have a unique identifier, a timestamp so we can delete the expired values and the actual data. We also have to include mutex in the storage struct - since our server can handle concurrent requests, we will have to lock the storage before every read and write so as to not get any duplicate write. The stored data will be defined as an empty interface so that we are not limited by data types.
@@ -113,7 +113,7 @@ package router
 
 import (
 	"fmt"
-	"go-redis/storage"
+	"go-kv-store/storage"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -243,8 +243,8 @@ package main
 
 import (
 	"flag"
-	"go-redis/router"
-	"go-redis/storage"
+	"go-kv-store/router"
+	"go-kv-store/storage"
 	"time"
 )
 

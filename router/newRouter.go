@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	"go-redis/storage"
+	"go-kv-store/storage"
 	"time"
 
 	"github.com/gin-contrib/cors"
