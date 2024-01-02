@@ -23,7 +23,7 @@ def send_get_request(start, end):
         _ = session.get(url, data=json.dumps(data))
 
 def main():
-    N = 4_000
+    N = 100_000
     processes = 8
     step = N // processes
 

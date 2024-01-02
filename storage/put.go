@@ -18,7 +18,9 @@ func (storage *Storage) Put(
 		return nil
 	}
 
+	storage.mu.Lock()
 	_, ok := (*storage.store)[key]
+	storage.mu.Unlock()
 	if ok {
 		// if key exists, remove it and append to the end
 		// this is to update it's timestamp
@@ -26,7 +28,6 @@ func (storage *Storage) Put(
 	}
 
 	storage.mu.Lock()
-
 	if storage.useLogs {
 		valueBytes, err := json.Marshal(value)
 		valueString := fmt.Sprintf(

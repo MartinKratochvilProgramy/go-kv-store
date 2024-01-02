@@ -538,10 +538,12 @@ func (storage *Storage) Put(
 		return nil
 	}
 
+	storage.mu.Lock()
 	_, ok := (*storage.store)[key]
+	storage.mu.Unlock()
 	if ok {
 		// if key exists, remove it and append to the end
-		// this is to update the timestamp
+		// this is to update it's timestamp
 		storage.Delete(key)
 	}
 
@@ -560,7 +562,7 @@ Let's test how much load can our storage handle. Run the sotrage and this time s
 go run . --port=3000 --expiration=1s
 ```
 
-I have also written a python script to simulate the server load - using ProcessPoolExecutor we spawn 8 concurrent processes which send 4000 put and get requests, essentially inserting and reading every key - we then time the total execution time for all these 8000 requests. The script is provided below:
+I have also written a python script to simulate the server load - using ProcessPoolExecutor we spawn 8 concurrent processes which send 100 000 put and get requests, essentially inserting and reading every key - we then time the total execution time for all these 200 000 requests. The script is provided below:
 
 ```python
 import time
@@ -588,7 +590,7 @@ def send_get_request(start, end):
         _ = session.get(url, data=json.dumps(data))
 
 def main():
-    N = 4_000
+    N = 100_000
     processes = 8
     step = N // processes
 
@@ -608,8 +610,12 @@ if __name__ == "__main__":
     main()
 ```
 
-Here's the result: on my machine (personal laptop with Intel i7, the process consumed around 700MB of RAM) total execution time was 3.964s, which means 0.496ms per request. We are well under the 1ms limit, considering the amount of work it took, that's pretty good!
+Here's the result: on my machine (personal laptop with Intel i7, the process consumed around 700MB of RAM) total execution time was 58.283s, which means 0.296ms per request. We are well under the 1ms limit, considering the amount of work it took, that's pretty good!
 
 ## Conclusion
 
-In this article we implemented a simple key-value store in Go. It turns out that Go is a great choice if we want to write performant applications relatively easily. 
+In this article we implemented a simple key-value store in Go. It turns out that Go is a great choice if we want to write performant and relatively low-level code easily. Our implemented key value store can handle thousands of requests while keeping the response time unde 1ms.
+
+Of course this project cannot fully replace existing solutions such as Redis, this has been mainly an excercise to implement such solution and the corresponding data structures.
+
+You can find the complete code on my [GitHub](https://github.com/MartinKratochvilProgramy/go-kv-store).
