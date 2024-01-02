@@ -1,12 +1,11 @@
 # Creating a custom memory key-value store using Golang
 
-In-memory key-value storage like Redis is an important part of most large web applications. The main advantage lies in storing data in memory, making such databases ✨blazing fast✨, however at the cost of being more expensive to run compared to standard databases, since they do not run using SSD but RAM. Thus, such databases are perfect for storing data that needs to be accessible quickly, but does not need to be stored for long periods of time. 
+In-memory key-value storage is an important part of most large web applications. The main advantage lies in storing data in memory, making such databases ✨blazing fast✨, however at the cost of being more expensive to run compared to standard databases since they do not run using SSD but RAM. Thus, such databases are perfect for storing data that needs to be accessible quickly, but does not need to be stored for long periods of time. 
 
 In this article I will describe my approach for creating such system. To implement this idea I have chosen Golang, as it is relatively fast and low-level enough, while being easy to write effective code in. Main features of this project are:
 
 - Data should be quickly accessible - achieve sub-ms speed for data lookup.
-- Stored data has an expiration time, meaning after certain time, it is automatically removed.
-- Logs should be written so that after stopping the database, it can be reconstructed.
+- Stored data has an expiration time, meaning after certain duration, it is automatically removed.
 - Expose the application through a web server with relevant methods.
 
 ## 
@@ -17,7 +16,7 @@ Let's first create a project by running:
 go mod init go-redis
 ```
 
-Then we can start working on the storage. Create folder ./storage, inside we will make a Storage struct with store map - the reason for using map is allows us quickly access unstructured data by given key. Map keys will be strings and values will store in an empty interface StoreWrite - each write will have a unique identifier, a timestamp so we can delete the expired values and the actual data. We also have to include mutex in the storage struct - since our server can handle concurrent requests, we will have to lock the store before every read and write so as to not get any duplicate write. The stored data will be defined as an empty interface so that we are not limited by data types.
+Then we can start working on the storage. Create folder ./storage, inside we will make a Storage struct with store map - the reason for using map is that it allows us quickly access unstructured data by given key. Map keys will be strings and values will store in an empty interface StoreWrite - each write will have a unique identifier, a timestamp so we can delete the expired values and the actual data. We also have to include mutex in the storage struct - since our server can handle concurrent requests, we will have to lock the storage before every read and write so as to not get any duplicate write. The stored data will be defined as an empty interface so that we are not limited by data types.
 
 ``` go
 // storage/newStorage.go
@@ -53,7 +52,7 @@ func NewStorage() *Storage {
 
 ```
 
-Using a map as opposed to other data structures has one big advantage - it allows us to access unstructured data fairly quicky if we know the key that needs to be looked up, no need for loops. We then create a simple get method that return value by given key, but everytime we get an item, we need to lock the mutex:
+Using map as opposed to other data structures has one big advantage - it allows us to access unstructured data fairly quicky if we know the key that needs to be looked up, no need for loops. We then create a simple get method that return value by given key, but everytime we get an item, we need to lock the mutex:
 ``` go
 // storage/get.go
 
@@ -302,7 +301,7 @@ We would like the database writes to expire after some time - easy enough, the t
 
 Another solution could be to keep the data in the map and list at the same time, where map would be used for lookup and list to find data older than some value, but duplicating data in a database is a terrible idea.
 
-The best way I could think of to store time-structured data to a map is to implement a linked list data structure, where each item contains not only the necessary data, but also a pointer to data before and after it. Again, I am assuming that data will be written to the database in a chronological order and the order will not change (ie. the timestamp is final and determined by the application).
+The best way I could think of to store time-structured data to a map is to implement a linked list data structure where each item contains not only the necessary data, but also a pointer to writes before and after it. Again, I am assuming that data will be written to the database in a chronological order and the order will not change (ie. the timestamp is final and determined by the application).
 
 Let's tweak the storage struct and add necessary pointers. We also need to keep track of head and tail, so that we know where to start when traversing the list:
 ``` go
@@ -410,7 +409,7 @@ func (storage *Storage) Put(
 }
 ```
 
-Now we can traverse the linked list, look for expired values, and when an unexpired value is encountered, break the loop. Like this:
+Now we can traverse the linked list, look for expired values and when an unexpired value is encountered, break the loop:
 
 ``` go
 // storage/cleanupExpiredEntries.go
@@ -450,7 +449,7 @@ func (storage *Storage) cleanupExpiredEntries() {
 }
 ```
 
-Start this function in a goroutine so that it does not interfere with the storage functionality:
+Start the cleanup function in a goroutine so that it does not interfere with the storage functionality:
 
 ```go
 // storage/newStorage.go
@@ -469,7 +468,7 @@ func NewStorage(expiration *time.Duration,) *Storage {
 }
 ```
 
-Lastly we will pass the expiration parameter as an environment variable in main function:
+Lastly we will pass the expiration parameter as an environment variable in the main function:
 
 ```go
 // main.go
@@ -542,7 +541,7 @@ func (storage *Storage) Put(
 	_, ok := (*storage.store)[key]
 	if ok {
 		// if key exists, remove it and append to the end
-		// this is to update it's timestamp
+		// this is to update the timestamp
 		storage.Delete(key)
 	}
 
@@ -610,3 +609,7 @@ if __name__ == "__main__":
 ```
 
 Here's the result: on my machine (personal laptop with Intel i7, the process consumed around 700MB of RAM) total execution time was 3.964s, which means 0.496ms per request. We are well under the 1ms limit, considering the amount of work it took, that's pretty good!
+
+## Conclusion
+
+In this article we implemented a simple key-value store in Go. It turns out that Go is a great choice if we want to write performant applications relatively easily. 
