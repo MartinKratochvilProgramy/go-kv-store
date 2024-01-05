@@ -1,6 +1,6 @@
 # About this project
 
-This is a simple implementation of key-value store in Go. It serves as simple caching server that can store data for specified duration with sub 1ms speed.
+This is a simple implementation of key-value store in Go. It serves as simple caching server that can store data for specified duration with sub 1ms read and write speed.
 
 # Installation
 
