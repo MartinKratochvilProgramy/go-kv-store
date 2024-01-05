@@ -488,6 +488,8 @@ func main() {
 Although we have already designed a way to automatically delete writes, let's also implement a way for the user to delete - what kind of database would it be if there was no option to delete? In the storage struct create a delete method - again we have to lock the mutex to avoid conflicts. We also have to restructure the linked list on deletion. First check if the deleted key is either head or tail and if it is, move the nextStoreWrite or prevStoreWrite, then connect the previous and next writes by moving the relevant pointers.
 
 ```go
+// storage/delete.go
+
 package storage
 
 import (
