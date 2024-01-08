@@ -2,7 +2,7 @@
 
 This is a simple implementation of key-value store in Go. It serves as simple caching server that can store data for specified duration with sub 1ms read and write speed.
 
-Detailed description of the code and design decisions I took when writing it is in this Medium article [Medium article]([https://www.genome.gov/](https://github.com/user/repo/blob/branch/other_file.md](https://medium.com/@martvil96/creating-an-in-memory-key-value-store-using-golang-2db73aaec087)).
+Detailed description of the code and design decisions I took when writing it is in this Medium article [Medium article](https://medium.com/@martvil96/creating-an-in-memory-key-value-store-using-golang-2db73aaec087).
 
 # Installation
 
