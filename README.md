@@ -51,7 +51,7 @@ returns:
 }
 ```
 
-- DELETE - deletes wrire:
+- DELETE - deletes write:
 ```http
 DELETE http://127.0.0.1:3000/
 
